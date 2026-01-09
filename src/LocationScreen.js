@@ -12,8 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-/* ---------- TRANSLATIONS ---------- */
-
 const translations = {
   hi: {
     title: 'स्थान विवरण',
@@ -42,7 +40,6 @@ export default function LocationScreen() {
   const [tehsil, setTehsil] = useState('');
   const [pincode, setPincode] = useState('');
 
-  // ✅ FIXED
   const isValid =
     district.length > 0 && tehsil.length > 0 && pincode.length === 6;
 
@@ -58,7 +55,6 @@ export default function LocationScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ---------- HEADER ---------- */}
       <View style={styles.header}>
         <SafeAreaView>
           <View style={styles.headerRow}>
@@ -101,7 +97,6 @@ export default function LocationScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* ---------- FOOTER ---------- */}
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         <TouchableOpacity
           disabled={!isValid}
@@ -115,8 +110,6 @@ export default function LocationScreen() {
   );
 }
 
-/* ---------- INPUT ---------- */
-
 function Input({ label, ...props }) {
   return (
     <View style={styles.inputGroup}>
@@ -127,8 +120,6 @@ function Input({ label, ...props }) {
     </View>
   );
 }
-
-/* ---------- STYLES ---------- */
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F4F6' },

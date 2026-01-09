@@ -9,7 +9,7 @@ const Stack = createNativeStackNavigator();
 export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerBackTitle: 'Back' }}>
+      <Stack.Navigator>
         <Stack.Screen
           name="LocationScreen"
           component={LocationScreen}
@@ -18,7 +18,7 @@ export default function AppNavigator() {
         <Stack.Screen
           name="RegistrationScreen"
           component={RegistrationScreen}
-          options={{ headerShown: false }}
+          options={{ headerShown: false, title: '' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -9,11 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 
-/* ---------- TRANSLATIONS ---------- */
+import { back } from './assets/images';
 
 const translations = {
   hi: {
@@ -27,6 +28,7 @@ const translations = {
     mobileNo: 'मोबाइल नंबर',
     memberDetails: 'परिवार के सदस्य',
     addMember: 'सदस्य जोड़ें',
+    editMember: 'सदस्य संपादित करें',
     memberName: 'सदस्य का नाम',
     relation: 'संबंध',
     age: 'उम्र',
@@ -34,6 +36,7 @@ const translations = {
     cancel: 'रद्द करें',
     save: 'सहेजें',
     submit: 'सबमिट करें',
+    edit: 'Edit',
   },
   en: {
     familyRegistration: 'Family Registration',
@@ -46,6 +49,7 @@ const translations = {
     mobileNo: 'Mobile Number',
     memberDetails: 'Family Members',
     addMember: 'Add Member',
+    editMember: 'Edit Member',
     memberName: "Member's Name",
     relation: 'Relation',
     age: 'Age',
@@ -53,36 +57,67 @@ const translations = {
     cancel: 'Cancel',
     save: 'Save',
     submit: 'Submit',
+    edit: 'Edit',
   },
 };
 
 export default function RegistrationScreen() {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { district, tehsil, pincode } = route.params || {};
+
   const [language, setLanguage] = useState('hi');
   const t = translations[language];
 
-  /* ---------- HEAD ---------- */
   const [mukhiyaName, setMukhiyaName] = useState('');
   const [fatherName, setFatherName] = useState('');
   const [gotr, setGotr] = useState('');
   const [nivashi, setNivashi] = useState('');
   const [address, setAddress] = useState('');
   const [mobileNo, setMobileNo] = useState('');
-
-  /* ---------- MEMBERS ---------- */
   const [members, setMembers] = useState([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newMember, setNewMember] = useState({
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+
+  const [memberForm, setMemberForm] = useState({
     name: '',
     relation: '',
     age: '',
     mobile: '',
   });
 
-  const addMember = () => {
-    if (!newMember.name || !newMember.relation) return;
-    setMembers([...members, { ...newMember, id: Date.now().toString() }]);
-    setNewMember({ name: '', relation: '', age: '', mobile: '' });
-    setShowAdd(false);
+  const resetForm = () => {
+    setMemberForm({ name: '', relation: '', age: '', mobile: '' });
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  const onSaveMember = () => {
+    if (!memberForm.name || !memberForm.relation) return;
+
+    if (editingId) {
+      setMembers(prev =>
+        prev.map(m => (m.id === editingId ? { ...m, ...memberForm } : m)),
+      );
+    } else {
+      setMembers(prev => [
+        ...prev,
+        { ...memberForm, id: Date.now().toString() },
+      ]);
+    }
+
+    resetForm();
+  };
+
+  const onEditMember = member => {
+    setMemberForm({
+      name: member.name,
+      relation: member.relation,
+      age: member.age,
+      mobile: member.mobile,
+    });
+    setEditingId(member.id);
+    setShowForm(true);
   };
 
   const submit = () => {
@@ -100,11 +135,18 @@ export default function RegistrationScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ---------- HEADER ---------- */}
       <View style={styles.header}>
         <SafeAreaView>
-          <View style={styles.headerRow}>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backBtn}
+            >
+              <Image source={back} style={styles.backIcon} />
+            </TouchableOpacity>
+
             <Text style={styles.headerTitle}>{t.familyRegistration}</Text>
+
             <TouchableOpacity
               onPress={() => setLanguage(language === 'hi' ? 'en' : 'hi')}
               style={styles.langBtn}
@@ -114,6 +156,15 @@ export default function RegistrationScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {district && (
+            <View style={styles.locationRow}>
+              <Text style={styles.locationIcon}>📍</Text>
+              <Text style={styles.locationText}>
+                {district}, {tehsil} - {pincode}
+              </Text>
+            </View>
+          )}
         </SafeAreaView>
       </View>
 
@@ -158,58 +209,65 @@ export default function RegistrationScreen() {
             />
           </View>
 
-          {/* ---------- MEMBERS ---------- */}
           {members.length > 0 && (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t.memberDetails}</Text>
               {members.map(m => (
-                <Text key={m.id} style={styles.memberItem}>
-                  • {m.name} ({m.relation})
-                </Text>
+                <View key={m.id} style={styles.memberRow}>
+                  <Text style={styles.memberItem}>
+                    • {m.name} ({m.relation})
+                  </Text>
+                  <TouchableOpacity onPress={() => onEditMember(m)}>
+                    <Text style={styles.editText}>{t.edit}</Text>
+                  </TouchableOpacity>
+                </View>
               ))}
             </View>
           )}
 
-          {!showAdd ? (
+          {!showForm ? (
             <TouchableOpacity
               style={styles.addBtn}
-              onPress={() => setShowAdd(true)}
+              onPress={() => setShowForm(true)}
             >
               <Text style={styles.addBtnText}>+ {t.addMember}</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.card}>
+              <Text style={styles.sectionTitle}>
+                {editingId ? t.editMember : t.addMember}
+              </Text>
+
               <Input
                 label={t.memberName}
-                value={newMember.name}
-                onChangeText={v => setNewMember({ ...newMember, name: v })}
+                value={memberForm.name}
+                onChangeText={v => setMemberForm({ ...memberForm, name: v })}
               />
               <Input
                 label={t.relation}
-                value={newMember.relation}
-                onChangeText={v => setNewMember({ ...newMember, relation: v })}
+                value={memberForm.relation}
+                onChangeText={v =>
+                  setMemberForm({ ...memberForm, relation: v })
+                }
               />
               <Input
                 label={t.age}
-                value={newMember.age}
-                onChangeText={v => setNewMember({ ...newMember, age: v })}
+                value={memberForm.age}
+                onChangeText={v => setMemberForm({ ...memberForm, age: v })}
                 keyboardType="number-pad"
               />
               <Input
                 label={t.mobile}
-                value={newMember.mobile}
-                onChangeText={v => setNewMember({ ...newMember, mobile: v })}
+                value={memberForm.mobile}
+                onChangeText={v => setMemberForm({ ...memberForm, mobile: v })}
                 keyboardType="number-pad"
               />
 
               <View style={styles.row}>
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={() => setShowAdd(false)}
-                >
+                <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
                   <Text>{t.cancel}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.saveBtn} onPress={addMember}>
+                <TouchableOpacity style={styles.saveBtn} onPress={onSaveMember}>
                   <Text style={{ color: '#fff' }}>{t.save}</Text>
                 </TouchableOpacity>
               </View>
@@ -220,7 +278,6 @@ export default function RegistrationScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* ---------- FOOTER ---------- */}
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         <TouchableOpacity
           style={[styles.submitBtn, !isValid && styles.disabled]}
@@ -234,8 +291,6 @@ export default function RegistrationScreen() {
   );
 }
 
-/* ---------- INPUT ---------- */
-
 function Input({ label, style, ...props }) {
   return (
     <View style={{ gap: 6 }}>
@@ -245,35 +300,44 @@ function Input({ label, style, ...props }) {
   );
 }
 
-/* ---------- STYLES ---------- */
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F4F6' },
 
   header: {
     backgroundColor: '#4F46E5',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 18,
   },
 
-  headerRow: {
+  headerTopRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
 
-  headerTitle: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '700',
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  backIcon: { width: 22, height: 22, tintColor: '#fff' },
+
+  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
 
   langBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
 
-  langText: { color: '#fff', fontWeight: '600' },
+  langText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  locationRow: { flexDirection: 'row', marginTop: 8 },
+  locationIcon: { marginRight: 6 },
+  locationText: { color: '#E0E7FF', fontSize: 14, fontWeight: '500' },
 
   body: { padding: 16 },
 
@@ -285,10 +349,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
+  sectionTitle: { fontSize: 18, fontWeight: '700' },
 
   input: {
     borderWidth: 1,
@@ -300,6 +361,15 @@ const styles = StyleSheet.create({
 
   label: { fontWeight: '600', fontSize: 14 },
 
+  memberRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  memberItem: { color: '#374151', fontSize: 14 },
+  editText: { color: '#4F46E5', fontWeight: '600' },
+
   addBtn: {
     borderWidth: 1,
     borderStyle: 'dashed',
@@ -310,10 +380,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  addBtnText: {
-    color: '#4F46E5',
-    fontWeight: '600',
-  },
+  addBtnText: { color: '#4F46E5', fontWeight: '600' },
 
   row: { flexDirection: 'row', gap: 12 },
 
@@ -350,6 +417,4 @@ const styles = StyleSheet.create({
   submitText: { color: '#fff', fontWeight: '600', fontSize: 16 },
 
   disabled: { opacity: 0.5 },
-
-  memberItem: { color: '#374151', fontSize: 14 },
 });
