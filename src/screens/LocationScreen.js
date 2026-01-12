@@ -8,9 +8,11 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ToastAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { supabase } from '../lib/supabase';
 
 const translations = {
   hi: {
@@ -43,14 +45,43 @@ export default function LocationScreen() {
   const isValid =
     district.length > 0 && tehsil.length > 0 && pincode.length === 6;
 
-  const onNext = () => {
+  const onNext = async () => {
     if (!isValid) return;
 
-    navigation.navigate('RegistrationScreen', {
-      district,
-      tehsil,
-      pincode,
-    });
+    try {
+      // ✅ SAFE: no auth lock
+      const { data } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+
+      if (!user) {
+        ToastAndroid.show('User not logged in', ToastAndroid.LONG);
+        return;
+      }
+
+      const { error } = await supabase.from('locations').upsert(
+        {
+          user_id: user.id,
+          district: district.trim(),
+          tehsil: tehsil.trim(),
+          pincode: pincode.trim(),
+        },
+        { onConflict: 'user_id' },
+      );
+
+      if (error) {
+        ToastAndroid.show(error.message, ToastAndroid.LONG);
+        return;
+      }
+
+      // ✅ Navigate only after DB success
+      navigation.navigate('RegistrationScreen', {
+        district,
+        tehsil,
+        pincode,
+      });
+    } catch (e) {
+      ToastAndroid.show('Something went wrong', ToastAndroid.LONG);
+    }
   };
 
   return (

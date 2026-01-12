@@ -1,0 +1,3 @@
+export const supabaseUrl = 'https://wdxikekeltoweenbaovp.supabase.co';
+export const supabaseAnonKey =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkeGlrZWtlbHRvd2VlbmJhb3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDg2ODMsImV4cCI6MjA4MzUyNDY4M30.cxGLCmhM6VK-wSThzd1z_LlHLIqpyrxg-sUNe3cHdLY';
