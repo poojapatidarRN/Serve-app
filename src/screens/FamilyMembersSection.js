@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from 'react-native';
 
-export default function FamilyMembersSection({
-  members,
-  setMembers,
-  t,
-  styles,
-}) {
+export default function FamilyMembersSection({ members, setMembers, t }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
   const [form, setForm] = useState({
     name: '',
     relation: '',
@@ -22,8 +25,29 @@ export default function FamilyMembersSection({
     setShowForm(false);
   };
 
+  /* ---------- VALIDATION ---------- */
+  const validateMember = () => {
+    if (!form.name.trim()) {
+      Alert.alert('Validation Error', 'Member name is required');
+      return false;
+    }
+
+    if (!form.relation.trim()) {
+      Alert.alert('Validation Error', 'Relation is required');
+      return false;
+    }
+
+    if (form.mobile && form.mobile.length !== 10) {
+      Alert.alert('Validation Error', 'Mobile number must be 10 digits');
+      return false;
+    }
+
+    return true;
+  };
+
+  /* ---------- SAVE ---------- */
   const onSave = () => {
-    if (!form.name || !form.relation) return;
+    if (!validateMember()) return;
 
     if (editingId) {
       setMembers(prev =>
@@ -46,12 +70,13 @@ export default function FamilyMembersSection({
     resetForm();
   };
 
+  /* ---------- EDIT ---------- */
   const onEdit = member => {
     setForm({
-      name: member.name,
-      relation: member.relation,
-      age: member.age,
-      mobile: member.mobile,
+      name: member.name || '',
+      relation: member.relation || '',
+      age: member.age || '',
+      mobile: member.mobile || '',
     });
     setEditingId(member.id);
     setShowForm(true);
@@ -59,14 +84,17 @@ export default function FamilyMembersSection({
 
   return (
     <>
+      {/* MEMBER LIST */}
       {members.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>{t.memberDetails}</Text>
+
           {members.map(m => (
             <View key={m.id} style={styles.memberRow}>
               <Text style={styles.memberItem}>
                 • {m.name} ({m.relation})
               </Text>
+
               <TouchableOpacity onPress={() => onEdit(m)}>
                 <Text style={styles.editText}>{t.edit}</Text>
               </TouchableOpacity>
@@ -75,6 +103,7 @@ export default function FamilyMembersSection({
         </View>
       )}
 
+      {/* ADD BUTTON */}
       {!showForm ? (
         <TouchableOpacity
           style={styles.addBtn}
@@ -83,6 +112,7 @@ export default function FamilyMembersSection({
           <Text style={styles.addBtnText}>+ {t.addMember}</Text>
         </TouchableOpacity>
       ) : (
+        /* FORM */
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>
             {editingId ? t.editMember : t.addMember}
@@ -92,33 +122,34 @@ export default function FamilyMembersSection({
             label={t.memberName}
             value={form.name}
             onChangeText={v => setForm({ ...form, name: v })}
-            styles={styles}
           />
+
           <Field
             label={t.relation}
             value={form.relation}
             onChangeText={v => setForm({ ...form, relation: v })}
-            styles={styles}
           />
+
           <Field
             label={t.age}
             value={form.age}
             keyboardType="number-pad"
             onChangeText={v => setForm({ ...form, age: v })}
-            styles={styles}
           />
+
           <Field
             label={t.mobile}
             value={form.mobile}
             keyboardType="number-pad"
+            maxLength={10}
             onChangeText={v => setForm({ ...form, mobile: v })}
-            styles={styles}
           />
 
           <View style={styles.row}>
             <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
               <Text>{t.cancel}</Text>
             </TouchableOpacity>
+
             <TouchableOpacity style={styles.saveBtn} onPress={onSave}>
               <Text style={{ color: '#fff' }}>{t.save}</Text>
             </TouchableOpacity>
@@ -129,7 +160,9 @@ export default function FamilyMembersSection({
   );
 }
 
-function Field({ label, styles, ...props }) {
+/* ---------- FIELD ---------- */
+
+function Field({ label, ...props }) {
   return (
     <View style={{ gap: 6 }}>
       <Text style={styles.label}>{label}</Text>
@@ -137,3 +170,74 @@ function Field({ label, styles, ...props }) {
     </View>
   );
 }
+
+/* ---------- STYLES ---------- */
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  label: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  memberRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  memberItem: {
+    color: '#374151',
+    fontSize: 14,
+  },
+  editText: {
+    color: '#4F46E5',
+    fontWeight: '600',
+  },
+  addBtn: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#4F46E5',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  addBtnText: {
+    color: '#4F46E5',
+    fontWeight: '600',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: '#E5E7EB',
+    padding: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  saveBtn: {
+    flex: 1,
+    backgroundColor: '#4F46E5',
+    padding: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+});

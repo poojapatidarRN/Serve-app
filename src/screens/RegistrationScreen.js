@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
   ToastAndroid,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -68,7 +69,7 @@ const translations = {
 export default function RegistrationScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { district, tehsil, pincode } = route.params || {};
+  const { district, tehsil, pincode, locationId } = route.params || {};
 
   const [language, setLanguage] = useState('hi');
   const t = translations[language];
@@ -82,16 +83,34 @@ export default function RegistrationScreen() {
   const [members, setMembers] = useState([]);
   const [user, setUser] = useState(null);
 
+  const [loading, setLoading] = useState(false); // 🔹 loader
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       const loggedUser = data?.session?.user ?? null;
       setUser(loggedUser);
-
-      if (loggedUser) {
-        loadFamilyFromDB(loggedUser.id); // ✅ auto-fill
-      }
     });
   }, []);
+
+  /* ---------- VALIDATION ---------- */
+
+  const validateForm = () => {
+    if (!mukhiyaName.trim())
+      return Alert.alert('Validation', 'Please enter Mukhiya name');
+    if (!fatherName.trim())
+      return Alert.alert('Validation', 'Please enter Father name');
+    if (!gotr.trim()) return Alert.alert('Validation', 'Please enter Gotra');
+    if (!nivashi.trim())
+      return Alert.alert('Validation', 'Please enter Nivashi');
+    if (!address.trim())
+      return Alert.alert('Validation', 'Please enter Address');
+    if (!mobileNo || mobileNo.length !== 10)
+      return Alert.alert('Validation', 'Please enter valid mobile number');
+
+    return true;
+  };
+
+  /* ---------- DB METHODS ---------- */
 
   const upsertFamily = async userId => {
     const { error } = await supabase.from('families').upsert(
@@ -172,46 +191,79 @@ export default function RegistrationScreen() {
     setMembers(prev => prev.map(m => ({ ...m, isEdited: false })));
   };
 
-  const loadFamilyFromDB = async userId => {
+  /* ---------- SUBMIT FLOW ---------- */
+
+  const insertFamily = async () => {
+    const { data, error } = await supabase
+      .from('families')
+      .insert({
+        surveyor_id: user.id,
+        location_id: locationId,
+        mukhiya_name: mukhiyaName,
+        father_name: fatherName,
+        gotr,
+        nivashi,
+        address,
+        mobile: mobileNo,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data.id; // familyId
+  };
+
+  // const doSubmit = async () => {
+  //   try {
+  //     setLoading(true);
+
+  //     await upsertFamily(user.id);
+  //     const familyId = await fetchFamilyId(user.id);
+  //     await insertNewMembers(familyId);
+  //     await updateEditedMembers();
+
+  //     ToastAndroid.show('Data saved successfully', ToastAndroid.LONG);
+
+  //     // 🔹 RESET FORM
+  //     setMukhiyaName('');
+  //     setFatherName('');
+  //     setGotr('');
+  //     setNivashi('');
+  //     setAddress('');
+  //     setMobileNo('');
+  //     setMembers([]);
+  //   } catch (e) {
+  //     ToastAndroid.show(
+  //       e?.message || 'Something went wrong',
+  //       ToastAndroid.LONG,
+  //     );
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  const doSubmit = async () => {
     try {
-      // 1️⃣ Load family
-      const { data: family, error } = await supabase
-        .from('families')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+      setLoading(true);
 
-      if (error || !family) return;
+      const familyId = await insertFamily();
 
-      setMukhiyaName(family.mukhiya_name || '');
-      setFatherName(family.father_name || '');
-      setGotr(family.gotr || '');
-      setNivashi(family.nivashi || '');
-      setAddress(family.address || '');
-      setMobileNo(family.mobile || '');
+      await insertNewMembers(familyId);
 
-      // 2️⃣ Load members
-      const { data: membersData } = await supabase
-        .from('family_members')
-        .select('*')
-        .eq('family_id', family.id);
+      ToastAndroid.show('Family saved successfully', ToastAndroid.LONG);
 
-      if (membersData?.length) {
-        setMembers(
-          membersData.map(m => ({
-            id: m.client_id, // keep client id
-            db_id: m.id, // DB id
-            name: m.name,
-            relation: m.relation,
-            age: m.age ? String(m.age) : '',
-            mobile: m.mobile || '',
-            isNew: false,
-            isEdited: false,
-          })),
-        );
-      }
+      // ✅ RESET FOR NEXT FAMILY (SAME LOCATION)
+      setMukhiyaName('');
+      setFatherName('');
+      setGotr('');
+      setNivashi('');
+      setAddress('');
+      setMobileNo('');
+      setMembers([]);
     } catch (e) {
-      // silent fail
+      ToastAndroid.show(e.message || 'Error', ToastAndroid.LONG);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -221,23 +273,19 @@ export default function RegistrationScreen() {
       return;
     }
 
-    if (!mukhiyaName || !fatherName || mobileNo.length !== 10) return;
+    if (!validateForm()) return;
 
-    try {
-      await upsertFamily(user.id);
-      const familyId = await fetchFamilyId(user.id);
-      await insertNewMembers(familyId);
-      await updateEditedMembers();
-
-      // ✅ RELOAD FROM DB (single source of truth)
-      await loadFamilyFromDB(user.id);
-
-      ToastAndroid.show('Data saved successfully', ToastAndroid.LONG);
-    } catch (e) {
-      ToastAndroid.show(
-        e?.message || 'Something went wrong',
-        ToastAndroid.LONG,
+    if (members.length === 0) {
+      Alert.alert(
+        'Confirmation',
+        'No family member added. Do you want to continue?',
+        [
+          { text: 'No', style: 'cancel' },
+          { text: 'Yes', onPress: doSubmit },
+        ],
       );
+    } else {
+      doSubmit();
     }
   };
 
@@ -271,9 +319,6 @@ export default function RegistrationScreen() {
       ToastAndroid.show('Logout failed', ToastAndroid.SHORT);
     }
   };
-
-  const isValid =
-    mukhiyaName.length > 0 && fatherName.length > 0 && mobileNo.length === 10;
 
   return (
     <View style={styles.container}>
@@ -327,7 +372,6 @@ export default function RegistrationScreen() {
         </SafeAreaView>
       </View>
 
-      {/* BODY */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
@@ -372,24 +416,23 @@ export default function RegistrationScreen() {
             members={members}
             setMembers={setMembers}
             t={t}
-            styles={styles}
           />
-
           <View style={{ height: 120 }} />
         </ScrollView>
 
         <SafeAreaView edges={['bottom']} style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.submitBtn, !isValid && styles.disabled]}
-            disabled={false}
-            onPress={submit}
-          >
+          <TouchableOpacity style={styles.submitBtn} onPress={submit}>
             <Text style={styles.submitText}>{t.submit}</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </KeyboardAvoidingView>
 
-      {/* FOOTER */}
+      {/* ---------- LOADER ---------- */}
+      {loading && (
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      )}
     </View>
   );
 }
@@ -405,7 +448,35 @@ function Input({ label, style, ...props }) {
   );
 }
 
+/* ---------- STYLES (only loader added) ---------- */
+
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F3F4F6' },
+  body: { padding: 16 },
+  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: '700' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+  },
+  label: { fontWeight: '600' },
+  footer: { backgroundColor: '#fff', padding: 16 },
+  submitBtn: {
+    backgroundColor: '#4F46E5',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  submitText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+
+  loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
     backgroundColor: '#4F46E5',
     paddingHorizontal: 16,
@@ -476,77 +547,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-  container: { flex: 1, backgroundColor: '#F3F4F6' },
-
-  langBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  langText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-
-  body: { padding: 16 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    gap: 12,
-  },
-  sectionTitle: { fontSize: 18, fontWeight: '700' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#F9FAFB',
-  },
-  label: { fontWeight: '600', fontSize: 14 },
-  memberRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  memberItem: { color: '#374151', fontSize: 14 },
-  editText: { color: '#4F46E5', fontWeight: '600' },
-  addBtn: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#4F46E5',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  addBtnText: { color: '#4F46E5', fontWeight: '600' },
-  row: { flexDirection: 'row', gap: 12 },
-  cancelBtn: {
-    flex: 1,
-    backgroundColor: '#E5E7EB',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  saveBtn: {
-    flex: 1,
-    backgroundColor: '#4F46E5',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  footer: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  submitBtn: {
-    backgroundColor: '#4F46E5',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  submitText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  disabled: { opacity: 0.5 },
 });

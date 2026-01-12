@@ -55,36 +55,6 @@ export default function LocationScreen() {
     };
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadLocationFromDB();
-    }, []),
-  );
-
-  const loadLocationFromDB = async () => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      const user = data?.session?.user;
-
-      if (!user) return;
-
-      const { data: location, error } = await supabase
-        .from('locations')
-        .select('district, tehsil, pincode')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error || !location) return;
-
-      // ✅ Prefill fields
-      setDistrict(location.district || '');
-      setTehsil(location.tehsil || '');
-      setPincode(location.pincode || '');
-    } catch (e) {
-      // silent fail (no toast needed here)
-    }
-  };
-
   const isValid =
     district.length > 0 && tehsil.length > 0 && pincode.length === 6;
 
@@ -92,7 +62,6 @@ export default function LocationScreen() {
     if (!isValid) return;
 
     try {
-      // ✅ SAFE: no auth lock
       const { data } = await supabase.auth.getSession();
       const user = data?.session?.user;
 
@@ -101,28 +70,36 @@ export default function LocationScreen() {
         return;
       }
 
-      const { error } = await supabase.from('locations').upsert(
-        {
-          user_id: user.id,
+      const { data: location, error } = await supabase
+        .from('locations')
+        .insert({
+          surveyor_id: user.id,
           district: district.trim(),
           tehsil: tehsil.trim(),
           pincode: pincode.trim(),
-        },
-        { onConflict: 'user_id' },
-      );
+        })
+        .select()
+        .single();
 
       if (error) {
         ToastAndroid.show(error.message, ToastAndroid.LONG);
         return;
       }
 
-      // ✅ Navigate only after DB success
+      // ✅ RESET FORM (READY FOR NEXT LOCATION)
+      setDistrict('');
+      setTehsil('');
+      setPincode('');
+
+      // ✅ MOVE TO REGISTRATION WITH LOCATION ID
       navigation.navigate('RegistrationScreen', {
-        district,
-        tehsil,
-        pincode,
+        locationId: location.id,
+        district: location.district,
+        tehsil: location.tehsil,
+        pincode: location.pincode,
       });
     } catch (e) {
+      console.log('error5555===', e.message);
       ToastAndroid.show('Something went wrong', ToastAndroid.LONG);
     }
   };
