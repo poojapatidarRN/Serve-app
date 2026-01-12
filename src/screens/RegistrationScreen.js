@@ -84,7 +84,12 @@ export default function RegistrationScreen() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setUser(data?.session?.user ?? null);
+      const loggedUser = data?.session?.user ?? null;
+      setUser(loggedUser);
+
+      if (loggedUser) {
+        loadFamilyFromDB(loggedUser.id); // ✅ auto-fill
+      }
     });
   }, []);
 
@@ -167,9 +172,50 @@ export default function RegistrationScreen() {
     setMembers(prev => prev.map(m => ({ ...m, isEdited: false })));
   };
 
-  const submit = async () => {
-    console.log('submit called');
+  const loadFamilyFromDB = async userId => {
+    try {
+      // 1️⃣ Load family
+      const { data: family, error } = await supabase
+        .from('families')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
 
+      if (error || !family) return;
+
+      setMukhiyaName(family.mukhiya_name || '');
+      setFatherName(family.father_name || '');
+      setGotr(family.gotr || '');
+      setNivashi(family.nivashi || '');
+      setAddress(family.address || '');
+      setMobileNo(family.mobile || '');
+
+      // 2️⃣ Load members
+      const { data: membersData } = await supabase
+        .from('family_members')
+        .select('*')
+        .eq('family_id', family.id);
+
+      if (membersData?.length) {
+        setMembers(
+          membersData.map(m => ({
+            id: m.client_id, // keep client id
+            db_id: m.id, // DB id
+            name: m.name,
+            relation: m.relation,
+            age: m.age ? String(m.age) : '',
+            mobile: m.mobile || '',
+            isNew: false,
+            isEdited: false,
+          })),
+        );
+      }
+    } catch (e) {
+      // silent fail
+    }
+  };
+
+  const submit = async () => {
     if (!user) {
       ToastAndroid.show('User not logged in', ToastAndroid.LONG);
       return;
@@ -183,12 +229,46 @@ export default function RegistrationScreen() {
       await insertNewMembers(familyId);
       await updateEditedMembers();
 
+      // ✅ RELOAD FROM DB (single source of truth)
+      await loadFamilyFromDB(user.id);
+
       ToastAndroid.show('Data saved successfully', ToastAndroid.LONG);
     } catch (e) {
       ToastAndroid.show(
         e?.message || 'Something went wrong',
         ToastAndroid.LONG,
       );
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      if (user?.id) {
+        // 1️⃣ Update DB (active = false)
+        await supabase
+          .from('users')
+          .update({
+            active: false,
+            last_login: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+      }
+
+      // 2️⃣ End auth session
+      await supabase.auth.signOut();
+
+      // 3️⃣ Clear local state
+      setUser(null);
+
+      // 4️⃣ Reset navigation
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'LoginScreen' }],
+      });
+
+      ToastAndroid.show('Logged out successfully', ToastAndroid.SHORT);
+    } catch (e) {
+      ToastAndroid.show('Logout failed', ToastAndroid.SHORT);
     }
   };
 
@@ -210,14 +290,22 @@ export default function RegistrationScreen() {
 
             <Text style={styles.headerTitle}>{t.familyRegistration}</Text>
 
-            <TouchableOpacity
-              onPress={() => setLanguage(language === 'hi' ? 'en' : 'hi')}
-              style={styles.langBtn}
-            >
-              <Text style={styles.langText}>
-                {language === 'hi' ? 'EN' : 'HI'}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {/* LANGUAGE */}
+              <TouchableOpacity
+                onPress={() => setLanguage(language === 'hi' ? 'en' : 'hi')}
+                style={styles.langBtn}
+              >
+                <Text style={styles.langText}>
+                  {language === 'hi' ? 'EN' : 'HI'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* LOGOUT */}
+              <TouchableOpacity onPress={handleLogout} style={styles.langBtn}>
+                <Text style={styles.langText}>Logout</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {district && (

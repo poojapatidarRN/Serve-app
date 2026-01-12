@@ -1,31 +1,39 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { AuthContext } from '../contexts/AuthContext';
 
+import SignupScreen from '../screens/SignupScreen';
+import LoginScreen from '../screens/LoginScreen';
 import LocationScreen from '../screens/LocationScreen';
 import RegistrationScreen from '../screens/RegistrationScreen';
-import SignupScreen from '../screens/SignupScreen';
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
+  const { user, loading } = useContext(AuthContext);
+
+  if (loading) return null; // or splash screen
+
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen
-          name="SignupScreen"
-          component={SignupScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="LocationScreen"
-          component={LocationScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="RegistrationScreen"
-          component={RegistrationScreen}
-          options={{ headerShown: false, title: '' }}
-        />
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {!user ? (
+          //  NOT LOGGED IN
+          <>
+            <Stack.Screen name="Signup" component={SignupScreen} />
+            <Stack.Screen name="LoginScreen" component={LoginScreen} />
+          </>
+        ) : (
+          //  LOGGED IN
+          <>
+            <Stack.Screen name="LocationScreen" component={LocationScreen} />
+            <Stack.Screen
+              name="RegistrationScreen"
+              component={RegistrationScreen}
+            />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

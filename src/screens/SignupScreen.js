@@ -117,6 +117,13 @@ export default function SignupScreen() {
         return;
       }
 
+      /* 3️⃣ UPDATE LOGIN META (ACTIVE + LAST LOGIN) */
+      await supabase.rpc('update_login_meta', {
+        uid: data.user.id,
+        ip: null,
+        location: null,
+      });
+
       Alert.alert(t.success, t.successMsg);
       setName('');
       setMobile('');
@@ -230,6 +237,17 @@ export default function SignupScreen() {
             {loading ? 'Please wait...' : t.signup}
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.loginLink}
+          onPress={() => navigation.navigate('LoginScreen')}
+        >
+          <Text style={styles.loginText}>
+            {language === 'hi'
+              ? 'पहले से खाता है? लॉग इन करें'
+              : 'Already have an account? Login'}
+          </Text>
+        </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -328,4 +346,14 @@ const styles = StyleSheet.create({
   },
 
   disabled: { opacity: 0.5 },
+  loginLink: {
+    marginTop: 18,
+    alignItems: 'center',
+  },
+
+  loginText: {
+    color: '#4F46E5',
+    fontWeight: '600',
+    fontSize: 15,
+  },
 });

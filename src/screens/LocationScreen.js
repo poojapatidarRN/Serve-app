@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ToastAndroid,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+
 import { supabase } from '../lib/supabase';
 
 const translations = {
@@ -41,6 +43,47 @@ export default function LocationScreen() {
   const [district, setDistrict] = useState('');
   const [tehsil, setTehsil] = useState('');
   const [pincode, setPincode] = useState('');
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => true, // ⛔ block back
+    );
+
+    return () => {
+      subscription.remove(); // ✅ correct cleanup
+    };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadLocationFromDB();
+    }, []),
+  );
+
+  const loadLocationFromDB = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+
+      if (!user) return;
+
+      const { data: location, error } = await supabase
+        .from('locations')
+        .select('district, tehsil, pincode')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error || !location) return;
+
+      // ✅ Prefill fields
+      setDistrict(location.district || '');
+      setTehsil(location.tehsil || '');
+      setPincode(location.pincode || '');
+    } catch (e) {
+      // silent fail (no toast needed here)
+    }
+  };
 
   const isValid =
     district.length > 0 && tehsil.length > 0 && pincode.length === 6;
@@ -99,6 +142,7 @@ export default function LocationScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+
           <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
         </SafeAreaView>
       </View>
