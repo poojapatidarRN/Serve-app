@@ -280,7 +280,9 @@ export default function RegistrationScreen() {
       {/* HEADER */}
       <View style={styles.header}>
         <SafeAreaView>
+          {/* TOP ROW */}
           <View style={styles.headerTopRow}>
+            {/* BACK */}
             <TouchableOpacity
               onPress={() => navigation.goBack()}
               style={styles.backBtn}
@@ -288,26 +290,32 @@ export default function RegistrationScreen() {
               <Image source={back} style={styles.backIcon} />
             </TouchableOpacity>
 
+            {/* TITLE */}
             <Text style={styles.headerTitle}>{t.familyRegistration}</Text>
 
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            {/* ACTIONS */}
+            <View style={styles.headerActions}>
               {/* LANGUAGE */}
               <TouchableOpacity
                 onPress={() => setLanguage(language === 'hi' ? 'en' : 'hi')}
-                style={styles.langBtn}
+                style={styles.actionBtn}
               >
-                <Text style={styles.langText}>
+                <Text style={styles.actionText}>
                   {language === 'hi' ? 'EN' : 'HI'}
                 </Text>
               </TouchableOpacity>
 
               {/* LOGOUT */}
-              <TouchableOpacity onPress={handleLogout} style={styles.langBtn}>
-                <Text style={styles.langText}>Logout</Text>
+              <TouchableOpacity
+                onPress={handleLogout}
+                style={[styles.actionBtn, styles.logoutBtn]}
+              >
+                <Text style={styles.actionText}>Logout</Text>
               </TouchableOpacity>
             </View>
           </View>
 
+          {/* LOCATION */}
           {district && (
             <View style={styles.locationRow}>
               <Text style={styles.locationIcon}>📍</Text>
@@ -398,26 +406,78 @@ function Input({ label, style, ...props }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F4F6' },
   header: {
     backgroundColor: '#4F46E5',
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 18,
+    paddingBottom: 14,
   },
+
   headerTopRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
+
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+
   backBtn: {
     width: 40,
     height: 40,
-    alignItems: 'center',
     justifyContent: 'center',
   },
-  backIcon: { width: 22, height: 22, tintColor: '#fff' },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
+
+  backIcon: {
+    width: 22,
+    height: 22,
+    tintColor: '#fff',
+  },
+
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  actionBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+
+  logoutBtn: {
+    backgroundColor: 'rgba(239,68,68,0.9)', // subtle red
+  },
+
+  actionText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+
+  locationIcon: {
+    marginRight: 6,
+  },
+
+  locationText: {
+    color: '#E0E7FF',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  container: { flex: 1, backgroundColor: '#F3F4F6' },
+
   langBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -425,9 +485,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
   langText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  locationRow: { flexDirection: 'row', marginTop: 8 },
-  locationIcon: { marginRight: 6 },
-  locationText: { color: '#E0E7FF', fontSize: 14, fontWeight: '500' },
+
   body: { padding: 16 },
   card: {
     backgroundColor: '#fff',

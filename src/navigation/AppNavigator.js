@@ -21,7 +21,7 @@ export default function AppNavigator() {
         {!user ? (
           //  NOT LOGGED IN
           <>
-            <Stack.Screen name="Signup" component={SignupScreen} />
+            <Stack.Screen name="SignupScreen" component={SignupScreen} />
             <Stack.Screen name="LoginScreen" component={LoginScreen} />
           </>
         ) : (

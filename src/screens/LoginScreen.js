@@ -180,6 +180,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 24,
   },
 
@@ -196,13 +197,12 @@ const styles = StyleSheet.create({
   },
 
   langBtn: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+    backgroundColor: '#4F46E5',
   },
-
-  langText: { color: '#fff', fontWeight: '700' },
+  langText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   card: {
     backgroundColor: '#fff',

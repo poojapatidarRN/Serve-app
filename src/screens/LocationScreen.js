@@ -221,13 +221,12 @@ const styles = StyleSheet.create({
   },
 
   langBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
-
-  langText: { color: '#fff', fontWeight: '600' },
+  langText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   body: { padding: 16 },
 
