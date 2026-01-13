@@ -8,7 +8,8 @@ import {
   Alert,
 } from 'react-native';
 
-export default function FamilyMembersSection({ members, setMembers, t }) {
+export default function FamilyMembersSection({ members, setMembers, t, defaultNivashi,
+  defaultAddress, }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -17,6 +18,8 @@ export default function FamilyMembersSection({ members, setMembers, t }) {
     relation: '',
     age: '',
     mobile: '',
+    nivashi: '',
+    address: '',
   });
 
   const resetForm = () => {
@@ -70,6 +73,23 @@ export default function FamilyMembersSection({ members, setMembers, t }) {
     resetForm();
   };
 
+
+  const onAddNew = () => {
+    setForm({
+      name: '',
+      relation: '',
+      age: '',
+      mobile: '',
+
+      // ✅ copy from parent
+      nivashi: defaultNivashi || '',
+      address: defaultAddress || '',
+    });
+
+    setEditingId(null);
+    setShowForm(true);
+  };
+
   /* ---------- EDIT ---------- */
   const onEdit = member => {
     setForm({
@@ -77,6 +97,8 @@ export default function FamilyMembersSection({ members, setMembers, t }) {
       relation: member.relation || '',
       age: member.age || '',
       mobile: member.mobile || '',
+      nivashi: member.nivashi || defaultNivashi || '',
+      address: member.address || defaultAddress || '',
     });
     setEditingId(member.id);
     setShowForm(true);
@@ -107,7 +129,7 @@ export default function FamilyMembersSection({ members, setMembers, t }) {
       {!showForm ? (
         <TouchableOpacity
           style={styles.addBtn}
-          onPress={() => setShowForm(true)}
+          onPress={onAddNew}
         >
           <Text style={styles.addBtnText}>+ {t.addMember}</Text>
         </TouchableOpacity>
@@ -135,6 +157,19 @@ export default function FamilyMembersSection({ members, setMembers, t }) {
             value={form.age}
             keyboardType="number-pad"
             onChangeText={v => setForm({ ...form, age: v })}
+          />
+
+          <Field
+            label={t.nivashi}
+            value={form.nivashi}
+            onChangeText={v => setForm({ ...form, nivashi: v })} />
+
+          <Field
+            label={t.address}
+            value={form.address}
+            onChangeText={v => setForm({ ...form, address: v })}
+            multiline
+            style={{ height: 80 }}
           />
 
           <Field

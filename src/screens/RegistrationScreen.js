@@ -112,36 +112,8 @@ export default function RegistrationScreen() {
 
   /* ---------- DB METHODS ---------- */
 
-  const upsertFamily = async userId => {
-    const { error } = await supabase.from('families').upsert(
-      {
-        user_id: userId,
-        mukhiya_name: mukhiyaName,
-        father_name: fatherName,
-        gotr,
-        nivashi,
-        address,
-        mobile: mobileNo,
-        district,
-        tehsil,
-        pincode,
-      },
-      { onConflict: 'user_id' },
-    );
 
-    if (error) throw error;
-  };
 
-  const fetchFamilyId = async userId => {
-    const { data, error } = await supabase
-      .from('families')
-      .select('id')
-      .eq('user_id', userId)
-      .single();
-
-    if (error || !data) throw new Error('Family not found');
-    return data.id;
-  };
 
   const insertNewMembers = async familyId => {
     const newMembers = members.filter(m => m.isNew);
@@ -152,44 +124,34 @@ export default function RegistrationScreen() {
       .insert(
         newMembers.map(m => ({
           family_id: familyId,
-          client_id: m.id,
           name: m.name,
           relation: m.relation,
           age: m.age ? Number(m.age) : null,
           mobile: m.mobile || null,
-        })),
+          nivashi: m.nivashi,
+          address: m.address,
+        }))
       )
-      .select('id, client_id');
+      .select('id');
 
     if (error) throw error;
 
+    // mark inserted members as saved
+    let dbIndex = 0;
     setMembers(prev =>
       prev.map(m => {
-        const row = data.find(d => d.client_id === m.id);
-        return row ? { ...m, db_id: row.id, isNew: false } : m;
-      }),
+        if (!m.isNew) return m;
+        const dbRow = data[dbIndex++];
+        return {
+          ...m,
+          db_id: dbRow.id,
+          isNew: false,
+        };
+      })
     );
   };
 
-  const updateEditedMembers = async () => {
-    const editedMembers = members.filter(m => m.isEdited && m.db_id);
 
-    for (const m of editedMembers) {
-      const { error } = await supabase
-        .from('family_members')
-        .update({
-          name: m.name,
-          relation: m.relation,
-          age: m.age ? Number(m.age) : null,
-          mobile: m.mobile || null,
-        })
-        .eq('id', m.db_id);
-
-      if (error) throw error;
-    }
-
-    setMembers(prev => prev.map(m => ({ ...m, isEdited: false })));
-  };
 
   /* ---------- SUBMIT FLOW ---------- */
 
@@ -213,34 +175,8 @@ export default function RegistrationScreen() {
     return data.id; // familyId
   };
 
-  // const doSubmit = async () => {
-  //   try {
-  //     setLoading(true);
 
-  //     await upsertFamily(user.id);
-  //     const familyId = await fetchFamilyId(user.id);
-  //     await insertNewMembers(familyId);
-  //     await updateEditedMembers();
 
-  //     ToastAndroid.show('Data saved successfully', ToastAndroid.LONG);
-
-  //     // 🔹 RESET FORM
-  //     setMukhiyaName('');
-  //     setFatherName('');
-  //     setGotr('');
-  //     setNivashi('');
-  //     setAddress('');
-  //     setMobileNo('');
-  //     setMembers([]);
-  //   } catch (e) {
-  //     ToastAndroid.show(
-  //       e?.message || 'Something went wrong',
-  //       ToastAndroid.LONG,
-  //     );
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const doSubmit = async () => {
     try {
@@ -415,6 +351,8 @@ export default function RegistrationScreen() {
           <FamilyMembersSection
             members={members}
             setMembers={setMembers}
+            defaultNivashi={nivashi}
+            defaultAddress={address}
             t={t}
           />
           <View style={{ height: 120 }} />

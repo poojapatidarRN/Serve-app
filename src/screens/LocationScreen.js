@@ -55,15 +55,51 @@ export default function LocationScreen() {
     };
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchLocationFromDB();
+    }, [])
+  );
+
+
   const isValid =
     district.length > 0 && tehsil.length > 0 && pincode.length === 6;
+
+  const fetchLocationFromDB = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData?.session?.user;
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('locations')
+        .select('district, tehsil, pincode')
+        .eq('surveyor_id', user.id)
+        .single();
+
+      if (error) {
+        console.log('FETCH LOCATION ERROR 👉', error);
+        return;
+      }
+
+      if (data) {
+        setDistrict(data.district || '');
+        setTehsil(data.tehsil || '');
+        setPincode(data.pincode || '');
+      }
+    } catch (e) {
+      console.log('FETCH LOCATION EXCEPTION 👉', e);
+    }
+  };
+
 
   const onNext = async () => {
     if (!isValid) return;
 
     try {
-      const { data } = await supabase.auth.getSession();
-      const user = data?.session?.user;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData?.session?.user;
 
       if (!user) {
         ToastAndroid.show('User not logged in', ToastAndroid.LONG);
@@ -72,26 +108,27 @@ export default function LocationScreen() {
 
       const { data: location, error } = await supabase
         .from('locations')
-        .insert({
-          surveyor_id: user.id,
-          district: district.trim(),
-          tehsil: tehsil.trim(),
-          pincode: pincode.trim(),
-        })
+        .upsert(
+          {
+            surveyor_id: user.id,
+            district: district.trim(),
+            tehsil: tehsil.trim(),
+            pincode: pincode.trim(),
+          },
+          {
+            onConflict: 'surveyor_id,district,tehsil,pincode',
+          }
+        )
         .select()
         .single();
 
-      if (error) {
-        ToastAndroid.show(error.message, ToastAndroid.LONG);
-        return;
-      }
+      if (error) throw error;
 
-      // ✅ RESET FORM (READY FOR NEXT LOCATION)
+      // RESET FORM
       setDistrict('');
       setTehsil('');
       setPincode('');
 
-      // ✅ MOVE TO REGISTRATION WITH LOCATION ID
       navigation.navigate('RegistrationScreen', {
         locationId: location.id,
         district: location.district,
@@ -99,8 +136,11 @@ export default function LocationScreen() {
         pincode: location.pincode,
       });
     } catch (e) {
-      console.log('error5555===', e.message);
-      ToastAndroid.show('Something went wrong', ToastAndroid.LONG);
+      console.log('LOCATION UPSERT ERROR 👉', e);
+      ToastAndroid.show(
+        e?.message || 'Location save failed',
+        ToastAndroid.LONG
+      );
     }
   };
 
