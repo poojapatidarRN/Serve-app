@@ -10,46 +10,15 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 
-/* ---------- TRANSLATIONS ---------- */
+import { supabase } from '../lib/supabase';
 
-const translations = {
-  hi: {
-    title: 'नया खाता बनाएँ',
-    subtitle: 'सिस्टम में नया उपयोगकर्ता पंजीकृत करें',
-    name: 'पूरा नाम',
-    mobile: 'मोबाइल नंबर',
-    password: 'पासवर्ड',
-    passwordHint: 'कम से कम 6 अक्षर',
-    signup: 'साइन अप',
-    success: 'सफलता',
-    successMsg: 'उपयोगकर्ता सफलतापूर्वक पंजीकृत किया गया',
-    invalidName: 'नाम केवल अक्षरों में होना चाहिए',
-    invalidMobile: 'मान्य 10 अंकों का मोबाइल नंबर दर्ज करें',
-    mobileExists: 'यह मोबाइल नंबर पहले से पंजीकृत है',
-  },
-  en: {
-    title: 'Create Account',
-    subtitle: 'Register a new user for the system',
-    name: 'Full Name',
-    mobile: 'Mobile Number',
-    password: 'Password',
-    passwordHint: 'Minimum 6 characters',
-    signup: 'Sign Up',
-    success: 'Success',
-    successMsg: 'User registered successfully',
-    invalidName: 'Name should contain only letters',
-    invalidMobile: 'Enter a valid 10-digit mobile number',
-    mobileExists: 'Mobile number already registered',
-  },
-};
 
 export default function SignupScreen() {
   const navigation = useNavigation();
-  const [language, setLanguage] = useState('hi');
-  const t = translations[language];
+  const { t, i18n } = useTranslation();
 
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
@@ -58,30 +27,41 @@ export default function SignupScreen() {
 
   const [nameError, setNameError] = useState('');
   const [mobileError, setMobileError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
-  /* ---------- VALIDATIONS ---------- */
+  const validateName = value => {
+    if (!value) return t('signup.nameRequired');
+    if (!/^[A-Za-z\s]+$/.test(value.trim()))
+      return t('signup.invalidName');
+    return '';
+  };
 
-  const isNameValid = value => /^[A-Za-z\s]+$/.test(value.trim());
-  const isMobileValid = value => /^[0-9]{10}$/.test(value);
+  const validateMobile = value => {
+    if (!value) return t('signup.mobileRequired');
+    if (!/^[0-9]{10}$/.test(value))
+      return t('signup.invalidMobile');
+    return '';
+  };
+
+  const validatePassword = value => {
+    if (!value) return t('signup.passwordRequired');
+    if (value.length < 6) return t('signup.passwordMin');
+    return '';
+  };
 
   const isValid =
-    isNameValid(name) &&
-    isMobileValid(mobile) &&
-    password.length >= 6 &&
-    !nameError &&
-    !mobileError;
+    !validateName(name) &&
+    !validateMobile(mobile) &&
+    !validatePassword(password);
 
-  /* ---------- SIGNUP ---------- */
 
   const onSignup = async () => {
     if (!isValid || loading) return;
 
     try {
       setLoading(true);
-
       const email = `${mobile}@serveapp.com`;
 
-      /* 1️⃣ Auth signup */
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -91,16 +71,10 @@ export default function SignupScreen() {
       });
 
       if (error) {
-        Alert.alert('Error', error.message);
+        Alert.alert(t('signup.signupFailed'));
         return;
       }
 
-      if (!data?.user?.id) {
-        Alert.alert('Error', 'User creation failed');
-        return;
-      }
-
-      /* 2️⃣ Insert into users table */
       const { error: profileError } = await supabase.from('users').insert({
         id: data.user.id,
         name: name.trim(),
@@ -110,9 +84,9 @@ export default function SignupScreen() {
 
       if (profileError) {
         if (profileError.code === '23505') {
-          Alert.alert('Error', t.mobileExists);
+          Alert.alert('Error', t('signup.mobileExists'));
         } else {
-          Alert.alert('Error', profileError.message);
+          Alert.alert(t('signup.signupFailed'));
         }
         return;
       }
@@ -124,13 +98,13 @@ export default function SignupScreen() {
         location: null,
       });
 
-      Alert.alert(t.success, t.successMsg);
+      Alert.alert(t('signup.success'), t('signup.successMsg'));
       setName('');
       setMobile('');
       setPassword('');
       navigation.navigate('LocationScreen');
     } catch (err) {
-      Alert.alert('Error', 'Something went wrong');
+      Alert.alert(t('signup.somethingWrong'));
     } finally {
       setLoading(false);
     }
@@ -145,86 +119,75 @@ export default function SignupScreen() {
         {/* ---------- HEADER ---------- */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerTitle}>{t.title}</Text>
-            <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
+            <Text style={styles.headerTitle}>{t('signup.title')}</Text>
+            <Text style={styles.headerSubtitle}>
+              {t('signup.subtitle')}
+            </Text>
           </View>
 
           <TouchableOpacity
             style={styles.langBtn}
-            onPress={() => setLanguage(language === 'hi' ? 'en' : 'hi')}
+            onPress={() =>
+              i18n.changeLanguage(i18n.language === 'hi' ? 'en' : 'hi')
+            }
           >
             <Text style={styles.langText}>
-              {language === 'hi' ? 'EN' : 'HI'}
+              {i18n.language === 'hi' ? 'EN' : 'HI'}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* ---------- FORM ---------- */}
         <View style={styles.card}>
-          {/* NAME */}
-          <Field label={t.name}>
+          <Field label={t('signup.name')}>
             <TextInput
               value={name}
-              onChangeText={value => {
-                setName(value);
-                if (value && !isNameValid(value)) {
-                  setNameError(t.invalidName);
-                } else {
-                  setNameError('');
-                }
+              onChangeText={v => {
+                setName(v);
+                setNameError(validateName(v));
               }}
-              onBlur={() => {
-                if (name && !isNameValid(name)) {
-                  setNameError(t.invalidName);
-                }
-              }}
-              placeholder={t.name}
+              onBlur={() => setNameError(validateName(name))}
+              placeholder={t('signup.name')}
               style={[styles.input, nameError && styles.inputError]}
             />
-            {nameError ? (
-              <Text style={styles.errorText}>{nameError}</Text>
-            ) : null}
+            {!!nameError && <Text style={styles.errorText}>{nameError}</Text>}
           </Field>
 
-          {/* MOBILE */}
-          <Field label={t.mobile}>
+          <Field label={t('signup.mobile')}>
             <TextInput
               value={mobile}
-              onChangeText={value => {
-                const cleaned = value.replace(/[^0-9]/g, '');
+              onChangeText={v => {
+                const cleaned = v.replace(/[^0-9]/g, '');
                 setMobile(cleaned);
-
-                if (cleaned && !isMobileValid(cleaned)) {
-                  setMobileError(t.invalidMobile);
-                } else {
-                  setMobileError('');
-                }
+                setMobileError(validateMobile(cleaned));
               }}
-              onBlur={() => {
-                if (mobile && !isMobileValid(mobile)) {
-                  setMobileError(t.invalidMobile);
-                }
-              }}
-              placeholder={t.mobile}
+              onBlur={() => setMobileError(validateMobile(mobile))}
+              placeholder={t('signup.mobile')}
               keyboardType="number-pad"
               maxLength={10}
               style={[styles.input, mobileError && styles.inputError]}
             />
-            {mobileError ? (
-              <Text style={styles.errorText}>{mobileError}</Text>
-            ) : null}
+            {!!mobileError && <Text style={styles.errorText}>{mobileError}</Text>}
           </Field>
 
-          {/* PASSWORD */}
-          <Field label={t.password}>
+
+          <Field label={t('signup.password')}>
             <TextInput
               value={password}
-              onChangeText={setPassword}
-              placeholder={t.passwordHint}
+              onChangeText={v => {
+                setPassword(v);
+                setPasswordError(validatePassword(v));
+              }}
+              onBlur={() => setPasswordError(validatePassword(password))}
+              placeholder={t('signup.passwordHint')}
               secureTextEntry
-              style={styles.input}
+              style={[styles.input, passwordError && styles.inputError]}
             />
+            {!!passwordError && (
+              <Text style={styles.errorText}>{passwordError}</Text>
+            )}
           </Field>
+
         </View>
 
         {/* ---------- SUBMIT ---------- */}
@@ -234,7 +197,7 @@ export default function SignupScreen() {
           onPress={onSignup}
         >
           <Text style={styles.submitText}>
-            {loading ? 'Please wait...' : t.signup}
+            {loading ? t('signup.pleaseWait') : t('signup.signup')}
           </Text>
         </TouchableOpacity>
 
@@ -243,9 +206,7 @@ export default function SignupScreen() {
           onPress={() => navigation.navigate('LoginScreen')}
         >
           <Text style={styles.loginText}>
-            {language === 'hi'
-              ? 'पहले से खाता है? लॉग इन करें'
-              : 'Already have an account? Login'}
+            {t('signup.alreadyAccount')}
           </Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>

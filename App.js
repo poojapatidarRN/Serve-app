@@ -1,4 +1,6 @@
 import React from 'react';
+import './src/i18n';
+
 import { AuthProvider } from './src/contexts/AuthContext';
 import { LocationProvider } from './src/contexts/LocationContext';
 import AppNavigator from './src/navigation/AppNavigator';

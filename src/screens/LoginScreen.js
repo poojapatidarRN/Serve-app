@@ -10,45 +10,37 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 
-/* ---------- TRANSLATIONS ---------- */
 
-const translations = {
-  hi: {
-    title: 'लॉग इन करें',
-    subtitle: 'अपने खाते में प्रवेश करें',
-    mobile: 'मोबाइल नंबर',
-    password: 'पासवर्ड',
-    login: 'लॉग इन',
-    invalidMobile: 'मान्य मोबाइल नंबर दर्ज करें',
-    success: 'सफलतापूर्वक लॉग इन',
-    noAccount: 'खाता नहीं है? साइन अप करें',
-  },
-  en: {
-    title: 'Login',
-    subtitle: 'Access your account',
-    mobile: 'Mobile Number',
-    password: 'Password',
-    login: 'Login',
-    invalidMobile: 'Enter a valid mobile number',
-    success: 'Logged in successfully',
-    noAccount: 'Don’t have an account? Sign up',
-  },
-};
+import { supabase } from '../lib/supabase';
+
 
 export default function LoginScreen() {
   const navigation = useNavigation();
-  const [language, setLanguage] = useState('hi');
-  const t = translations[language];
+  const { t, i18n } = useTranslation();
 
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mobileError, setMobileError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
-  const isMobileValid = value => /^[0-9]{10}$/.test(value);
-  const isValid = isMobileValid(mobile) && password.length >= 6;
+  const validateMobile = value => {
+    if (!value) return t('login.mobileRequired');
+    if (!/^[0-9]{10}$/.test(value)) return t('login.mobileInvalid');
+    return '';
+  };
+
+  const validatePassword = value => {
+    if (!value) return t('login.passwordRequired');
+    return '';
+  };
+
+  const isValid =
+    !validateMobile(mobile) &&
+    !validatePassword(password);
 
   const onLogin = async () => {
     if (!isValid || loading) return;
@@ -64,12 +56,12 @@ export default function LoginScreen() {
       });
 
       if (error) {
-        Alert.alert('Error', error.message);
+        Alert.alert(t('login.invalidCredentials'));
         return;
       }
 
       if (!data?.user?.id) {
-        Alert.alert('Error', 'Login failed');
+        Alert.alert(t('login.loginFailed'));
         return;
       }
 
@@ -79,12 +71,10 @@ export default function LoginScreen() {
         location: null,
       });
 
-      Alert.alert(t.success);
-
-      // ✅ Continue flow
+      Alert.alert(t('login.success'));
       navigation.replace('LocationScreen');
     } catch {
-      Alert.alert('Error', 'Something went wrong');
+      Alert.alert(t('login.somethingWrong'));
     } finally {
       setLoading(false);
     }
@@ -96,64 +86,82 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
       >
-        {/* HEADER */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerTitle}>{t.title}</Text>
-            <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
+            <Text style={styles.headerTitle}>{t('login.title')}</Text>
+            <Text style={styles.headerSubtitle}>
+              {t('login.subtitle')}
+            </Text>
           </View>
 
           <TouchableOpacity
             style={styles.langBtn}
-            onPress={() => setLanguage(language === 'hi' ? 'en' : 'hi')}
+            onPress={() =>
+              i18n.changeLanguage(i18n.language === 'hi' ? 'en' : 'hi')
+            }
           >
             <Text style={styles.langText}>
-              {language === 'hi' ? 'EN' : 'HI'}
+              {i18n.language === 'hi' ? 'EN' : 'HI'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* FORM */}
+        {/* ---------- FORM ---------- */}
         <View style={styles.card}>
-          <Field label={t.mobile}>
+          <Field label={t('login.mobile')}>
             <TextInput
               value={mobile}
-              onChangeText={v => setMobile(v.replace(/[^0-9]/g, ''))}
+              onChangeText={v => {
+                const cleaned = v.replace(/[^0-9]/g, '');
+                setMobile(cleaned);
+                setMobileError(validateMobile(cleaned));
+              }}
+              onBlur={() => setMobileError(validateMobile(mobile))}
               keyboardType="number-pad"
               maxLength={10}
-              placeholder={t.mobile}
-              style={styles.input}
+              placeholder={t('login.mobile')}
+              style={[styles.input, mobileError && styles.inputError]}
             />
+            {!!mobileError && <Text style={styles.errorText}>{mobileError}</Text>}
           </Field>
 
-          <Field label={t.password}>
+          <Field label={t('login.password')}>
             <TextInput
               value={password}
-              onChangeText={setPassword}
+              onChangeText={v => {
+                setPassword(v);
+                setPasswordError(validatePassword(v));
+              }}
+              onBlur={() => setPasswordError(validatePassword(password))}
               secureTextEntry
-              placeholder={t.password}
-              style={styles.input}
+              placeholder={t('login.password')}
+              style={[styles.input, passwordError && styles.inputError]}
             />
+            {!!passwordError && (
+              <Text style={styles.errorText}>{passwordError}</Text>
+            )}
           </Field>
         </View>
 
-        {/* LOGIN */}
+        {/* ---------- LOGIN ---------- */}
         <TouchableOpacity
           style={[styles.submitBtn, (!isValid || loading) && styles.disabled]}
           disabled={!isValid || loading}
           onPress={onLogin}
         >
           <Text style={styles.submitText}>
-            {loading ? 'Please wait...' : t.login}
+            {loading ? t('login.pleaseWait') : t('login.login')}
           </Text>
         </TouchableOpacity>
 
-        {/* SIGNUP LINK */}
+        {/* ---------- SIGNUP LINK ---------- */}
         <TouchableOpacity
           style={styles.signupLink}
           onPress={() => navigation.navigate('SignupScreen')}
         >
-          <Text style={styles.signupText}>{t.noAccount}</Text>
+          <Text style={styles.signupText}>
+            {t('login.noAccount')}
+          </Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -250,4 +258,13 @@ const styles = StyleSheet.create({
   },
 
   disabled: { opacity: 0.5 },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+  },
 });

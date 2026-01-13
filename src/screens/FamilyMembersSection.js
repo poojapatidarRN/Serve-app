@@ -7,9 +7,16 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-export default function FamilyMembersSection({ members, setMembers, t, defaultNivashi,
-  defaultAddress, }) {
+export default function FamilyMembersSection({
+  members,
+  setMembers,
+  defaultNivashi,
+  defaultAddress,
+}) {
+  const { t } = useTranslation();
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -23,7 +30,14 @@ export default function FamilyMembersSection({ members, setMembers, t, defaultNi
   });
 
   const resetForm = () => {
-    setForm({ name: '', relation: '', age: '', mobile: '' });
+    setForm({
+      name: '',
+      relation: '',
+      age: '',
+      mobile: '',
+      nivashi: '',
+      address: '',
+    });
     setEditingId(null);
     setShowForm(false);
   };
@@ -31,17 +45,26 @@ export default function FamilyMembersSection({ members, setMembers, t, defaultNi
   /* ---------- VALIDATION ---------- */
   const validateMember = () => {
     if (!form.name.trim()) {
-      Alert.alert('Validation Error', 'Member name is required');
+      Alert.alert(
+        t('familyMember.validationTitle'),
+        t('familyMember.memberNameRequired'),
+      );
       return false;
     }
 
     if (!form.relation.trim()) {
-      Alert.alert('Validation Error', 'Relation is required');
+      Alert.alert(
+        t('familyMember.validationTitle'),
+        t('familyMember.relationRequired'),
+      );
       return false;
     }
 
     if (form.mobile && form.mobile.length !== 10) {
-      Alert.alert('Validation Error', 'Mobile number must be 10 digits');
+      Alert.alert(
+        t('familyMember.validationTitle'),
+        t('familyMember.mobileInvalid'),
+      );
       return false;
     }
 
@@ -73,15 +96,12 @@ export default function FamilyMembersSection({ members, setMembers, t, defaultNi
     resetForm();
   };
 
-
   const onAddNew = () => {
     setForm({
       name: '',
       relation: '',
       age: '',
       mobile: '',
-
-      // ✅ copy from parent
       nivashi: defaultNivashi || '',
       address: defaultAddress || '',
     });
@@ -90,7 +110,6 @@ export default function FamilyMembersSection({ members, setMembers, t, defaultNi
     setShowForm(true);
   };
 
-  /* ---------- EDIT ---------- */
   const onEdit = member => {
     setForm({
       name: member.name || '',
@@ -109,7 +128,9 @@ export default function FamilyMembersSection({ members, setMembers, t, defaultNi
       {/* MEMBER LIST */}
       {members.length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t.memberDetails}</Text>
+          <Text style={styles.sectionTitle}>
+            {t('familyMember.memberDetails')}
+          </Text>
 
           {members.map(m => (
             <View key={m.id} style={styles.memberRow}>
@@ -118,7 +139,9 @@ export default function FamilyMembersSection({ members, setMembers, t, defaultNi
               </Text>
 
               <TouchableOpacity onPress={() => onEdit(m)}>
-                <Text style={styles.editText}>{t.edit}</Text>
+                <Text style={styles.editText}>
+                  {t('familyMember.edit')}
+                </Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -127,53 +150,55 @@ export default function FamilyMembersSection({ members, setMembers, t, defaultNi
 
       {/* ADD BUTTON */}
       {!showForm ? (
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={onAddNew}
-        >
-          <Text style={styles.addBtnText}>+ {t.addMember}</Text>
+        <TouchableOpacity style={styles.addBtn} onPress={onAddNew}>
+          <Text style={styles.addBtnText}>
+            + {t('familyMember.addMember')}
+          </Text>
         </TouchableOpacity>
       ) : (
         /* FORM */
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>
-            {editingId ? t.editMember : t.addMember}
+            {editingId
+              ? t('familyMember.editMember')
+              : t('familyMember.addMember')}
           </Text>
 
           <Field
-            label={t.memberName}
+            label={t('familyMember.memberName')}
             value={form.name}
             onChangeText={v => setForm({ ...form, name: v })}
           />
 
           <Field
-            label={t.relation}
+            label={t('familyMember.relation')}
             value={form.relation}
             onChangeText={v => setForm({ ...form, relation: v })}
           />
 
           <Field
-            label={t.age}
+            label={t('familyMember.age')}
             value={form.age}
             keyboardType="number-pad"
             onChangeText={v => setForm({ ...form, age: v })}
           />
 
           <Field
-            label={t.nivashi}
+            label={t('familyMember.nivashi')}
             value={form.nivashi}
-            onChangeText={v => setForm({ ...form, nivashi: v })} />
-
-          <Field
-            label={t.address}
-            value={form.address}
-            onChangeText={v => setForm({ ...form, address: v })}
-            multiline
-            style={{ height: 80 }}
+            onChangeText={v => setForm({ ...form, nivashi: v })}
           />
 
           <Field
-            label={t.mobile}
+            label={t('familyMember.address')}
+            value={form.address}
+            onChangeText={v => setForm({ ...form, address: v })}
+            multiline
+            style={styles.addressInput}
+          />
+
+          <Field
+            label={t('familyMember.mobile')}
             value={form.mobile}
             keyboardType="number-pad"
             maxLength={10}
@@ -182,11 +207,13 @@ export default function FamilyMembersSection({ members, setMembers, t, defaultNi
 
           <View style={styles.row}>
             <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
-              <Text>{t.cancel}</Text>
+              <Text>{t('familyMember.cancel')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.saveBtn} onPress={onSave}>
-              <Text style={{ color: '#fff' }}>{t.save}</Text>
+              <Text style={styles.saveText}>
+                {t('familyMember.save')}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -196,18 +223,16 @@ export default function FamilyMembersSection({ members, setMembers, t, defaultNi
 }
 
 /* ---------- FIELD ---------- */
-
-function Field({ label, ...props }) {
+function Field({ label, style, ...props }) {
   return (
-    <View style={{ gap: 6 }}>
+    <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput {...props} style={styles.input} />
+      <TextInput {...props} style={[styles.input, style]} />
     </View>
   );
 }
 
 /* ---------- STYLES ---------- */
-
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
@@ -220,6 +245,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+  field: { gap: 6 },
   input: {
     borderWidth: 1,
     borderColor: '#D1D5DB',
@@ -274,5 +300,12 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 10,
     alignItems: 'center',
+  },
+  saveText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  addressInput: {
+    height: 80,
   },
 });

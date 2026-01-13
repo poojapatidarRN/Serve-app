@@ -13,89 +13,80 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 
 import { supabase } from '../lib/supabase';
 
-const translations = {
-  hi: {
-    title: 'स्थान विवरण',
-    subtitle: 'कृपया अपनी स्थान जानकारी दर्ज करें',
-    district: 'जिला',
-    tehsil: 'तहसील',
-    pincode: 'पिनकोड',
-    next: 'आगे बढ़ें',
-  },
-  en: {
-    title: 'Location Details',
-    subtitle: 'Please enter your location information',
-    district: 'District',
-    tehsil: 'Tehsil',
-    pincode: 'Pincode',
-    next: 'Next',
-  },
-};
-
 export default function LocationScreen() {
   const navigation = useNavigation();
-  const [language, setLanguage] = useState('hi');
-  const t = translations[language];
+  const { t, i18n } = useTranslation();
 
   const [district, setDistrict] = useState('');
   const [tehsil, setTehsil] = useState('');
   const [pincode, setPincode] = useState('');
 
+  const [districtError, setDistrictError] = useState('');
+  const [tehsilError, setTehsilError] = useState('');
+  const [pincodeError, setPincodeError] = useState('');
+
+  /* ---------- BLOCK BACK BUTTON ---------- */
   useEffect(() => {
     const subscription = BackHandler.addEventListener(
       'hardwareBackPress',
-      () => true, // ⛔ block back
+      () => true
     );
-
-    return () => {
-      subscription.remove(); // ✅ correct cleanup
-    };
+    return () => subscription.remove();
   }, []);
 
+  /* ---------- FETCH EXISTING LOCATION ---------- */
   useFocusEffect(
     useCallback(() => {
       fetchLocationFromDB();
     }, [])
   );
 
+  /* ---------- VALIDATIONS ---------- */
+  const validateDistrict = value =>
+    !value ? t('location.districtRequired') : '';
+
+  const validateTehsil = value =>
+    !value ? t('location.tehsilRequired') : '';
+
+  const validatePincode = value => {
+    if (!value) return t('location.pincodeRequired');
+    if (!/^[0-9]{6}$/.test(value))
+      return t('location.pincodeInvalid');
+    return '';
+  };
 
   const isValid =
-    district.length > 0 && tehsil.length > 0 && pincode.length === 6;
+    !validateDistrict(district) &&
+    !validateTehsil(tehsil) &&
+    !validatePincode(pincode);
 
   const fetchLocationFromDB = async () => {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const user = sessionData?.session?.user;
-
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('locations')
         .select('district, tehsil, pincode')
         .eq('surveyor_id', user.id)
-        .order('created_at', { ascending: false }) // ✅ pick latest
-        .limit(1)                                  // ✅ force single row
-        .maybeSingle();                            // ✅ now safe
-
-      if (error) {
-        console.log('FETCH LOCATION ERROR 👉', error);
-        return;
-      }
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (data) {
         setDistrict(data.district || '');
         setTehsil(data.tehsil || '');
         setPincode(data.pincode || '');
       }
-    } catch (e) {
-      console.log('FETCH LOCATION EXCEPTION 👉', e);
-    }
+    } catch { }
   };
 
-
+  /* ---------- SAVE & NEXT ---------- */
   const onNext = async () => {
     if (!isValid) return;
 
@@ -104,7 +95,10 @@ export default function LocationScreen() {
       const user = sessionData?.session?.user;
 
       if (!user) {
-        ToastAndroid.show('User not logged in', ToastAndroid.LONG);
+        ToastAndroid.show(
+          t('location.notLoggedIn'),
+          ToastAndroid.LONG
+        );
         return;
       }
 
@@ -117,19 +111,12 @@ export default function LocationScreen() {
             tehsil: tehsil.trim(),
             pincode: pincode.trim(),
           },
-          {
-            onConflict: 'surveyor_id,district,tehsil,pincode',
-          }
+          { onConflict: 'surveyor_id,district,tehsil,pincode' }
         )
         .select()
         .single();
 
       if (error) throw error;
-
-      // RESET FORM
-      setDistrict('');
-      setTehsil('');
-      setPincode('');
 
       navigation.navigate('RegistrationScreen', {
         locationId: location.id,
@@ -137,10 +124,9 @@ export default function LocationScreen() {
         tehsil: location.tehsil,
         pincode: location.pincode,
       });
-    } catch (e) {
-      console.log('LOCATION UPSERT ERROR 👉', e);
+    } catch {
       ToastAndroid.show(
-        e?.message || 'Location save failed',
+        t('location.saveFailed'),
         ToastAndroid.LONG
       );
     }
@@ -148,24 +134,33 @@ export default function LocationScreen() {
 
   return (
     <View style={styles.container}>
+      {/* ---------- HEADER ---------- */}
       <View style={styles.header}>
         <SafeAreaView>
           <View style={styles.headerRow}>
-            <Text style={styles.headerTitle}>{t.title}</Text>
+            <Text style={styles.headerTitle}>
+              {t('location.title')}
+            </Text>
+
             <TouchableOpacity
-              onPress={() => setLanguage(language === 'hi' ? 'en' : 'hi')}
+              onPress={() =>
+                i18n.changeLanguage(i18n.language === 'hi' ? 'en' : 'hi')
+              }
               style={styles.langBtn}
             >
               <Text style={styles.langText}>
-                {language === 'hi' ? 'EN' : 'HI'}
+                {i18n.language === 'hi' ? 'EN' : 'HI'}
               </Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
+          <Text style={styles.headerSubtitle}>
+            {t('location.subtitle')}
+          </Text>
         </SafeAreaView>
       </View>
 
+      {/* ---------- BODY ---------- */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
@@ -173,17 +168,45 @@ export default function LocationScreen() {
         <ScrollView contentContainerStyle={styles.body}>
           <View style={styles.card}>
             <Input
-              label={t.district}
+              label={t('location.district')}
               value={district}
-              onChangeText={setDistrict}
+              onChangeText={v => {
+                setDistrict(v);
+                setDistrictError(validateDistrict(v));
+              }}
+              onBlur={() =>
+                setDistrictError(validateDistrict(district))
+              }
+              error={districtError}
             />
-            <Input label={t.tehsil} value={tehsil} onChangeText={setTehsil} />
+
             <Input
-              label={t.pincode}
+              label={t('location.tehsil')}
+              value={tehsil}
+              onChangeText={v => {
+                setTehsil(v);
+                setTehsilError(validateTehsil(v));
+              }}
+              onBlur={() =>
+                setTehsilError(validateTehsil(tehsil))
+              }
+              error={tehsilError}
+            />
+
+            <Input
+              label={t('location.pincode')}
               value={pincode}
-              onChangeText={setPincode}
+              onChangeText={v => {
+                const cleaned = v.replace(/[^0-9]/g, '');
+                setPincode(cleaned);
+                setPincodeError(validatePincode(cleaned));
+              }}
+              onBlur={() =>
+                setPincodeError(validatePincode(pincode))
+              }
               keyboardType="number-pad"
               maxLength={6}
+              error={pincodeError}
             />
           </View>
 
@@ -191,29 +214,40 @@ export default function LocationScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* ---------- FOOTER ---------- */}
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         <TouchableOpacity
           disabled={!isValid}
           style={[styles.button, !isValid && styles.disabled]}
           onPress={onNext}
         >
-          <Text style={styles.buttonText}>{t.next}</Text>
+          <Text style={styles.buttonText}>
+            {t('location.next')}
+          </Text>
         </TouchableOpacity>
       </SafeAreaView>
     </View>
   );
 }
 
-function Input({ label, ...props }) {
+/* ---------- INPUT COMPONENT ---------- */
+
+function Input({ label, error, ...props }) {
   return (
     <View style={styles.inputGroup}>
       <Text style={styles.label}>
         {label} <Text style={{ color: '#EF4444' }}>*</Text>
       </Text>
-      <TextInput {...props} style={styles.input} />
+      <TextInput
+        {...props}
+        style={[styles.input, error && styles.inputError]}
+      />
+      {!!error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 }
+
+/* ---------- STYLES ---------- */
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F4F6' },
@@ -267,6 +301,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
     backgroundColor: '#F9FAFB',
+  },
+
+  inputError: {
+    borderColor: '#EF4444',
+  },
+
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
   },
 
   footer: {
