@@ -2910,6 +2910,7 @@ __metadata:
     prettier: "npm:2.8.8"
     react: "npm:19.2.0"
     react-native: "npm:0.83.1"
+    react-native-geolocation-service: "https://github.com/vijaychouhan-rails/react-native-geolocation-service#master"
     react-native-safe-area-context: "npm:^5.6.2"
     react-native-screens: "npm:^4.19.0"
     react-native-url-polyfill: "npm:^3.0.0"
@@ -7678,6 +7679,13 @@ __metadata:
   version: 19.2.3
   resolution: "react-is@npm:19.2.3"
   checksum: 10c0/2b54c422c21b8dbd68a435a1cce21ecd5b6f06f48659531f7d53dd7368365da5a67e946f352fb2010d11ca40658aa67bec90995f0f1ec5556c0f71dbffe54994
+  languageName: node
+  linkType: hard
+
+"react-native-geolocation-service@https://github.com/vijaychouhan-rails/react-native-geolocation-service#master":
+  version: 5.3.1
+  resolution: "react-native-geolocation-service@https://github.com/vijaychouhan-rails/react-native-geolocation-service.git#commit=42442c486b0a4a54c6b20974a0fb0e339c1747a8"
+  checksum: 10c0/305ccf110f338b58da86ea5fa822fa42f7988d1f76c0a4a647340f7cc4bae0b373fd75fc525ebaac10edbdba310e030b75aac0f26c88300dfb8783f3bd1a718e
   languageName: node
   linkType: hard
 

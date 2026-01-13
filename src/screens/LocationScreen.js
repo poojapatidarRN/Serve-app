@@ -76,7 +76,9 @@ export default function LocationScreen() {
         .from('locations')
         .select('district, tehsil, pincode')
         .eq('surveyor_id', user.id)
-        .single();
+        .order('created_at', { ascending: false }) // ✅ pick latest
+        .limit(1)                                  // ✅ force single row
+        .maybeSingle();                            // ✅ now safe
 
       if (error) {
         console.log('FETCH LOCATION ERROR 👉', error);

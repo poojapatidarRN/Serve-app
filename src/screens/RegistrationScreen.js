@@ -18,6 +18,9 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import FamilyMembersSection from './FamilyMembersSection';
 import { back } from '../assets/images';
+import { getLiveLocation } from '../utils/locationPermission';
+import { useLocation } from '../contexts/LocationContext';
+
 
 /* ---------- TRANSLATIONS ---------- */
 
@@ -85,6 +88,8 @@ export default function RegistrationScreen() {
 
   const [loading, setLoading] = useState(false); // 🔹 loader
 
+  const { location } = useLocation();
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       const loggedUser = data?.session?.user ?? null;
@@ -109,6 +114,10 @@ export default function RegistrationScreen() {
 
     return true;
   };
+
+
+
+
 
   /* ---------- DB METHODS ---------- */
 
@@ -155,7 +164,28 @@ export default function RegistrationScreen() {
 
   /* ---------- SUBMIT FLOW ---------- */
 
-  const insertFamily = async () => {
+  // const insertFamily = async () => {
+  //   const { data, error } = await supabase
+  //     .from('families')
+  //     .insert({
+  //       surveyor_id: user.id,
+  //       location_id: locationId,
+  //       mukhiya_name: mukhiyaName,
+  //       father_name: fatherName,
+  //       gotr,
+  //       nivashi,
+  //       address,
+  //       mobile: mobileNo,
+  //     })
+  //     .select()
+  //     .single();
+
+  //   if (error) throw error;
+  //   return data.id; // familyId
+  // };
+
+
+  const insertFamily = async ({ latitude, longitude }) => {
     const { data, error } = await supabase
       .from('families')
       .insert({
@@ -167,28 +197,38 @@ export default function RegistrationScreen() {
         nivashi,
         address,
         mobile: mobileNo,
+        latitude,
+        longitude,
       })
       .select()
       .single();
 
     if (error) throw error;
-    return data.id; // familyId
+    return data.id;
   };
 
-
-
-
   const doSubmit = async () => {
+    if (!location) {
+      Alert.alert(
+        'Location Not Ready',
+        'Please wait a few seconds for GPS to initialize.'
+      );
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const familyId = await insertFamily();
+      const familyId = await insertFamily({
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
 
       await insertNewMembers(familyId);
 
       ToastAndroid.show('Family saved successfully', ToastAndroid.LONG);
 
-      // ✅ RESET FOR NEXT FAMILY (SAME LOCATION)
+      // reset
       setMukhiyaName('');
       setFatherName('');
       setGotr('');
@@ -197,11 +237,67 @@ export default function RegistrationScreen() {
       setMobileNo('');
       setMembers([]);
     } catch (e) {
-      ToastAndroid.show(e.message || 'Error', ToastAndroid.LONG);
+      Alert.alert('Error', e.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
   };
+
+
+  // const doSubmit = async () => {
+  //   try {
+  //     setLoading(true);
+
+  //     const coords = await getLiveLocation(); // ✅ ONLY ONCE
+
+  //     const familyId = await insertFamily(coords);
+  //     await insertNewMembers(familyId);
+
+  //     ToastAndroid.show('Family saved successfully', ToastAndroid.LONG);
+  //     setMukhiyaName('');
+  //     setFatherName('');
+  //     setGotr('');
+  //     setNivashi('');
+  //     setAddress('');
+  //     setMobileNo('');
+  //     setMembers([]);
+  //   } catch (e) {
+  //     Alert.alert(
+  //       'Location Error',
+  //       e.message || 'Unable to get location',
+  //     );
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
+
+
+  // const doSubmit = async () => {
+  //   try {
+  //     setLoading(true);
+
+  //     const familyId = await insertFamily();
+
+  //     await insertNewMembers(familyId);
+
+  //     ToastAndroid.show('Family saved successfully', ToastAndroid.LONG);
+
+  //     // ✅ RESET FOR NEXT FAMILY (SAME LOCATION)
+  //     setMukhiyaName('');
+  //     setFatherName('');
+  //     setGotr('');
+  //     setNivashi('');
+  //     setAddress('');
+  //     setMobileNo('');
+  //     setMembers([]);
+  //   } catch (e) {
+  //     ToastAndroid.show(e.message || 'Error', ToastAndroid.LONG);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const submit = async () => {
     if (!user) {
